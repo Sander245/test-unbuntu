@@ -1,23 +1,23 @@
 import os
 import subprocess
+import time
 
 def run(cmd, check=True):
-    print(f"Running: {cmd}")
+    print(f"→ {cmd}")
     subprocess.run(cmd, shell=True, check=check)
 
-def install_packages():
-    run("apt-get update")
-    run("apt-get install -y xfce4 xfce4-goodies tightvncserver dbus-x11 novnc websockify chromium")
-
-def setup_locale():
-    run("locale-gen en_US.UTF-8")
-    os.environ["LANG"] = "en_US.UTF-8"
+def kill_existing():
+    print("Killing existing VNC and noVNC processes...")
+    run("vncserver -kill :1", check=False)
+    run("pkill -f Xtightvnc", check=False)
+    run("pkill -f websockify", check=False)
+    run("rm -f /tmp/.X1-lock /tmp/.X11-unix/X1", check=False)
 
 def setup_vnc_password(password="user123"):
-    os.makedirs(os.path.expanduser("~/.vnc"), exist_ok=True)
     passwd_file = os.path.expanduser("~/.vnc/passwd")
     if not os.path.exists(passwd_file):
         print("Setting VNC password...")
+        os.makedirs(os.path.expanduser("~/.vnc"), exist_ok=True)
         proc = subprocess.Popen(["vncpasswd", "-f"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         stdout, _ = proc.communicate(input=f"{password}\n".encode())
         with open(passwd_file, "wb") as f:
@@ -27,28 +27,29 @@ def setup_vnc_password(password="user123"):
 def create_xstartup():
     xstartup_path = os.path.expanduser("~/.vnc/xstartup")
     with open(xstartup_path, "w") as f:
-        f.write("#!/bin/bash\nxrdb $HOME/.Xresources\nstartxfce4 &\n")
+        f.write("""#!/bin/bash
+export DISPLAY=:1
+xrdb $HOME/.Xresources
+startxfce4 &
+""")
     os.chmod(xstartup_path, 0o755)
 
 def start_vnc():
-    os.environ["USER"] = "root"
-    run("vncserver -kill :1", check=False)
     run("vncserver :1")
 
 def start_novnc():
-    log_path = os.path.expanduser("~/.novnc.log")
-    run(f"nohup websockify --web=/usr/share/novnc/ 6080 localhost:5901 > {log_path} 2>&1 &")
+    run("nohup websockify --web=/usr/share/novnc/ 6080 localhost:5901 > ~/.novnc.log 2>&1 &")
+    time.sleep(2)
 
 def main():
-    install_packages()
-    setup_locale()
+    kill_existing()
     setup_vnc_password()
     create_xstartup()
     start_vnc()
     start_novnc()
-    print("✅ Desktop is ready!")
-    print(f"🌐 Open in browser: https://{os.uname().nodename}-6080.githubpreview.dev")
-    print("🔐 VNC password: user123")
+    print("\nDesktop is running.")
+    print(f"Open in browser: https://{os.uname().nodename}-6080.githubpreview.dev")
+    print("VNC password: user123")
 
 if __name__ == "__main__":
     main()

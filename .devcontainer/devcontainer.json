@@ -1,0 +1,9 @@
+{
+  "name": "Debian 13 Desktop",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "postStartCommand": "bash .devcontainer/start-desktop.sh",
+  "forwardPorts": [6080],
+  "remoteUser": "root"
+}

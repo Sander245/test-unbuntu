@@ -1,18 +1,8 @@
 {
-  "name": "Codespaces GUI",
-  "image": "ghcr.io/markpatterson27/codespaces-vnc-image:universal",
-  "forwardPorts": [6080],
-  "portsAttributes": {
-    "6080": {
-      "label": "noVNC Viewer",
-      "onAutoForward": "openBrowser"
-    }
+  "name": "Debian 13 Desktop (Manual Start)",
+  "build": {
+    "dockerfile": "Dockerfile"
   },
-  "customizations": {
-    "vscode": {
-      "settings": {
-        "terminal.integrated.defaultProfile.linux": "bash"
-      }
-    }
-  }
+  "forwardPorts": [6080],
+  "remoteUser": "root"
 }

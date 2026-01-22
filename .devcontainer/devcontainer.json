@@ -1,6 +1,11 @@
 {
-  "name": "XFCE Desktop",
-  "image": "accetto/ubuntu-vnc-xfce-chromium-g3",
+  "name": "Codespaces GUI",
+  "image": "ghcr.io/markpatterson27/codespaces-vnc-image:universal",
   "forwardPorts": [6080],
-  "remoteUser": "root"
+  "portsAttributes": {
+    "6080": {
+      "label": "noVNC Viewer",
+      "onAutoForward": "openBrowser"
+    }
+  }
 }

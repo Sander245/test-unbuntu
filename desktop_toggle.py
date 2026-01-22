@@ -28,7 +28,6 @@ def create_xstartup():
     xstartup_path = os.path.expanduser("~/.vnc/xstartup")
     with open(xstartup_path, "w") as f:
         f.write("""#!/bin/bash
-export DISPLAY=:1
 xrdb $HOME/.Xresources
 startxfce4 &
 """)

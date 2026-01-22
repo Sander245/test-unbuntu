@@ -3,8 +3,6 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
-  "postStartCommand": "python3 .devcontainer/start_desktop.py",
   "forwardPorts": [6080],
-  "remoteUser": "devuser"
-  
+  "remoteUser": "root"
 }

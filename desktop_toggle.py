@@ -16,26 +16,96 @@ def check_and_install_packages():
         "dbus", "dbus-x11"
     ]
     
-    # Browser and useful apps
-    app_packages = [
+    # Browsers
+    browser_packages = [
         "firefox",           # Web browser
+        "chromium",          # Chromium browser
+    ]
+    
+    # File management & compression
+    file_packages = [
+        "thunar",            # File manager
+        "thunar-archive-plugin",  # Archive integration for Thunar
+        "xarchiver",         # GUI archive manager
+        "zip",               # ZIP compression
+        "unzip",             # ZIP extraction
+        "p7zip",             # 7-Zip compression
+        "tar",               # TAR archives
+        "gzip",              # GZIP compression
+        "bzip2",             # BZIP2 compression
+        "xz",                # XZ compression
+        "unrar",             # RAR extraction
+        "file-roller",       # GNOME archive manager (alternative)
+    ]
+    
+    # Office & productivity
+    office_packages = [
         "mousepad",          # Text editor
-        "thunar",            # File manager (usually comes with xfce4)
+        "libreoffice-writer",  # Word processor
+        "libreoffice-calc",    # Spreadsheet
+        "libreoffice-impress", # Presentations
+        "evince",            # PDF viewer
+        "galculator",        # Calculator
+        "gnome-calculator",  # Another calculator
+    ]
+    
+    # Media & graphics
+    media_packages = [
         "ristretto",         # Image viewer
+        "gimp",              # Image editor
+        "inkscape",          # Vector graphics
+        "vlc",               # Media player
+        "audacious",         # Music player
+        "cheese",            # Webcam app
+        "simple-scan",       # Scanner utility
+    ]
+    
+    # System utilities
+    system_packages = [
         "xfce4-taskmanager", # Task manager
         "htop",              # Terminal system monitor
+        "gnome-system-monitor",  # GUI system monitor
+        "gnome-disk-utility",    # Disk management
+        "gparted",           # Partition editor
+        "baobab",            # Disk usage analyzer
+        "xfce4-notifyd",     # Notifications
+        "xfce4-screenshooter",  # Screenshot tool
+        "flameshot",         # Advanced screenshot tool
+    ]
+    
+    # Development tools
+    dev_packages = [
+        "geany",             # IDE/text editor
+        "meld",              # Diff/merge tool
+        "gitg",              # Git GUI
+    ]
+    
+    # Network & internet
+    network_packages = [
+        "transmission-gtk",  # BitTorrent client (GTK version)
+        "filezilla",         # FTP client
+    ]
+    
+    # Themes and fonts
+    theme_packages = [
         "font-noto",         # Good fonts
+        "font-noto-emoji",   # Emoji support
+        "ttf-dejavu",        # DejaVu fonts
+        "ttf-liberation",    # Liberation fonts
         "adwaita-icon-theme", # Icons
         "papirus-icon-theme", # Nice icons
+        "arc-theme",         # Arc GTK theme
     ]
     
     print("🔍 Checking required packages...")
     
-    all_packages = core_packages + app_packages
+    all_packages = (core_packages + browser_packages + file_packages + 
+                   office_packages + media_packages + system_packages + 
+                   dev_packages + network_packages + theme_packages)
     
     # Check if vncserver is available
-    if not shutil.which("vncserver") or not shutil.which("firefox"):
-        print(f"📦 Installing packages...")
+    if not shutil.which("vncserver") or not shutil.which("chromium"):
+        print(f"📦 Installing packages (this may take a few minutes)...")
         run(f"sudo apk add --no-cache {' '.join(all_packages)}", check=False)
         print("✅ Packages installed successfully")
     else:
@@ -269,6 +339,241 @@ def disable_problematic_services():
     
     print("✅ Problematic services disabled")
 
+def create_desktop_icons():
+    """Create desktop shortcuts for all installed applications"""
+    print("🖼️  Creating desktop icons...")
+    
+    desktop_dir = os.path.expanduser("~/Desktop")
+    os.makedirs(desktop_dir, exist_ok=True)
+    
+    # Define all desktop shortcuts
+    desktop_entries = [
+        # Browsers
+        {
+            "name": "Firefox",
+            "exec": "firefox",
+            "icon": "firefox",
+            "comment": "Web Browser",
+            "categories": "Network;WebBrowser;"
+        },
+        {
+            "name": "Chromium",
+            "exec": "chromium",
+            "icon": "chromium",
+            "comment": "Chromium Web Browser",
+            "categories": "Network;WebBrowser;"
+        },
+        # File Management
+        {
+            "name": "Files (Thunar)",
+            "exec": "thunar",
+            "icon": "system-file-manager",
+            "comment": "File Manager",
+            "categories": "System;FileTools;FileManager;"
+        },
+        {
+            "name": "Archive Manager",
+            "exec": "xarchiver",
+            "icon": "xarchiver",
+            "comment": "Create and extract archives",
+            "categories": "Utility;Archiving;"
+        },
+        # Office
+        {
+            "name": "LibreOffice Writer",
+            "exec": "libreoffice --writer",
+            "icon": "libreoffice-writer",
+            "comment": "Word Processor",
+            "categories": "Office;WordProcessor;"
+        },
+        {
+            "name": "LibreOffice Calc",
+            "exec": "libreoffice --calc",
+            "icon": "libreoffice-calc",
+            "comment": "Spreadsheet",
+            "categories": "Office;Spreadsheet;"
+        },
+        {
+            "name": "LibreOffice Impress",
+            "exec": "libreoffice --impress",
+            "icon": "libreoffice-impress",
+            "comment": "Presentations",
+            "categories": "Office;Presentation;"
+        },
+        {
+            "name": "PDF Viewer",
+            "exec": "evince",
+            "icon": "evince",
+            "comment": "View PDF documents",
+            "categories": "Office;Viewer;"
+        },
+        {
+            "name": "Calculator",
+            "exec": "galculator",
+            "icon": "galculator",
+            "comment": "Calculator",
+            "categories": "Utility;Calculator;"
+        },
+        # Text Editors
+        {
+            "name": "Mousepad",
+            "exec": "mousepad",
+            "icon": "mousepad",
+            "comment": "Simple Text Editor",
+            "categories": "Utility;TextEditor;"
+        },
+        {
+            "name": "Geany",
+            "exec": "geany",
+            "icon": "geany",
+            "comment": "IDE and Text Editor",
+            "categories": "Development;IDE;"
+        },
+        # Media
+        {
+            "name": "Image Viewer",
+            "exec": "ristretto",
+            "icon": "ristretto",
+            "comment": "View Images",
+            "categories": "Graphics;Viewer;"
+        },
+        {
+            "name": "GIMP",
+            "exec": "gimp",
+            "icon": "gimp",
+            "comment": "Image Editor",
+            "categories": "Graphics;2DGraphics;"
+        },
+        {
+            "name": "Inkscape",
+            "exec": "inkscape",
+            "icon": "inkscape",
+            "comment": "Vector Graphics Editor",
+            "categories": "Graphics;VectorGraphics;"
+        },
+        {
+            "name": "VLC Media Player",
+            "exec": "vlc",
+            "icon": "vlc",
+            "comment": "Play Videos and Music",
+            "categories": "AudioVideo;Player;"
+        },
+        {
+            "name": "Audacious",
+            "exec": "audacious",
+            "icon": "audacious",
+            "comment": "Music Player",
+            "categories": "AudioVideo;Audio;Player;"
+        },
+        # System Tools
+        {
+            "name": "Terminal",
+            "exec": "xfce4-terminal",
+            "icon": "utilities-terminal",
+            "comment": "Terminal Emulator",
+            "categories": "System;TerminalEmulator;"
+        },
+        {
+            "name": "Task Manager",
+            "exec": "xfce4-taskmanager",
+            "icon": "utilities-system-monitor",
+            "comment": "Monitor System Resources",
+            "categories": "System;Monitor;"
+        },
+        {
+            "name": "System Monitor",
+            "exec": "gnome-system-monitor",
+            "icon": "utilities-system-monitor",
+            "comment": "View System Resources",
+            "categories": "System;Monitor;"
+        },
+        {
+            "name": "Disk Usage Analyzer",
+            "exec": "baobab",
+            "icon": "baobab",
+            "comment": "Analyze Disk Usage",
+            "categories": "System;Filesystem;"
+        },
+        {
+            "name": "Disks",
+            "exec": "gnome-disks",
+            "icon": "gnome-disks",
+            "comment": "Disk Management",
+            "categories": "System;"
+        },
+        {
+            "name": "GParted",
+            "exec": "gparted",
+            "icon": "gparted",
+            "comment": "Partition Editor",
+            "categories": "System;"
+        },
+        {
+            "name": "Screenshot",
+            "exec": "xfce4-screenshooter",
+            "icon": "applets-screenshooter",
+            "comment": "Take Screenshots",
+            "categories": "Utility;"
+        },
+        {
+            "name": "Flameshot",
+            "exec": "flameshot gui",
+            "icon": "flameshot",
+            "comment": "Advanced Screenshot Tool",
+            "categories": "Utility;"
+        },
+        # Development
+        {
+            "name": "Meld",
+            "exec": "meld",
+            "icon": "meld",
+            "comment": "Diff and Merge Tool",
+            "categories": "Development;"
+        },
+        {
+            "name": "Gitg",
+            "exec": "gitg",
+            "icon": "gitg",
+            "comment": "Git Repository Viewer",
+            "categories": "Development;"
+        },
+        # Network
+        {
+            "name": "Transmission",
+            "exec": "transmission-gtk",
+            "icon": "transmission",
+            "comment": "BitTorrent Client",
+            "categories": "Network;P2P;"
+        },
+        {
+            "name": "FileZilla",
+            "exec": "filezilla",
+            "icon": "filezilla",
+            "comment": "FTP Client",
+            "categories": "Network;FileTransfer;"
+        },
+    ]
+    
+    for entry in desktop_entries:
+        desktop_file = os.path.join(desktop_dir, f"{entry['name'].replace(' ', '-').replace('(', '').replace(')', '')}.desktop")
+        with open(desktop_file, "w") as f:
+            f.write("[Desktop Entry]\n")
+            f.write("Version=1.0\n")
+            f.write("Type=Application\n")
+            f.write(f"Name={entry['name']}\n")
+            f.write(f"Exec={entry['exec']}\n")
+            f.write(f"Icon={entry['icon']}\n")
+            f.write(f"Comment={entry['comment']}\n")
+            f.write(f"Categories={entry['categories']}\n")
+            f.write("Terminal=false\n")
+            f.write("StartupNotify=true\n")
+        os.chmod(desktop_file, 0o755)
+    
+    # Also mark all desktop files as trusted (XFCE specific)
+    run("chmod +x ~/Desktop/*.desktop", check=False)
+    
+    print(f"✅ Created {len(desktop_entries)} desktop icons")
+
 def start_vnc():
     print("🚀 Starting VNC server...")
     os.environ["USER"] = os.environ.get("USER", "root")
@@ -329,6 +634,7 @@ def main():
         configure_xfce_settings()
         create_xstartup()
         create_vnc_config()
+        create_desktop_icons()
         start_vnc()
         start_novnc()
         
@@ -337,15 +643,33 @@ def main():
         print("="*60)
         print(f"🌐 Open in browser: {get_preview_url()}")
         print("🔐 VNC password: user123")
-        print("\n📦 Installed Apps:")
-        print("   • Firefox - Web Browser")
-        print("   • Mousepad - Text Editor")
-        print("   • Thunar - File Manager")
-        print("   • Ristretto - Image Viewer")
-        print("   • Task Manager - System Monitor")
+        print("\n📦 Installed Applications:")
+        print("   🌐 BROWSERS:")
+        print("      • Firefox, Chromium")
+        print("   📁 FILE MANAGEMENT:")
+        print("      • Thunar File Manager, Archive Manager (Xarchiver)")
+        print("      • Supports: ZIP, 7z, TAR, GZIP, BZIP2, XZ, RAR")
+        print("   📝 OFFICE & PRODUCTIVITY:")
+        print("      • LibreOffice (Writer, Calc, Impress)")
+        print("      • PDF Viewer (Evince), Calculator")
+        print("   ✏️  TEXT EDITORS:")
+        print("      • Mousepad, Geany IDE")
+        print("   🎨 GRAPHICS & MEDIA:")
+        print("      • GIMP, Inkscape, Image Viewer")
+        print("      • VLC Media Player, Audacious Music Player")
+        print("   🔧 SYSTEM TOOLS:")
+        print("      • Task Manager, System Monitor")
+        print("      • Disk Usage Analyzer, GParted")
+        print("      • Screenshot Tools (Flameshot)")
+        print("   💻 DEVELOPMENT:")
+        print("      • Meld (diff/merge), Gitg (Git GUI)")
+        print("   🌐 NETWORK:")
+        print("      • Transmission (BitTorrent), FileZilla (FTP)")
+        print("\n🖼️  Desktop icons have been created for all apps!")
         print("\n💡 Tips:")
         print("   • The desktop will NEVER disconnect or lock")
-        print("   • Screen saver and user switching are completely disabled")
+        print("   • All apps are available from the Applications menu")
+        print("   • Double-click desktop icons to launch apps")
         print("   • Reconnect anytime using the same URL")
         print("="*60)
     except Exception as e:

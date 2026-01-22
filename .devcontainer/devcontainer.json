@@ -1,8 +1,6 @@
 {
-  "name": "Debian 13 Desktop",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
+  "name": "XFCE Desktop",
+  "image": "accetto/ubuntu-vnc-xfce-chromium-g3",
   "forwardPorts": [6080],
   "remoteUser": "root"
 }

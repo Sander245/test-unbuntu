@@ -6,9 +6,3 @@ RUN apt-get update && apt-get install -y \
     locales \
     && locale-gen en_US.UTF-8 \
     && apt-get clean
-# Create a non-root user
-RUN useradd -m devuser && \
-    echo "devuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
-
-# Set default user
-USER devuser

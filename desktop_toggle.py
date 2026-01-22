@@ -103,9 +103,20 @@ def check_and_install_packages():
                    office_packages + media_packages + system_packages + 
                    dev_packages + network_packages + theme_packages)
     
-    # Check if vncserver is available
-    if not shutil.which("vncserver") or not shutil.which("chromium"):
+    # List of essential executables to check - if ANY are missing, reinstall all
+    essential_apps = [
+        "vncserver", "chromium", "filezilla", "transmission-gtk", 
+        "gimp", "inkscape", "vlc", "libreoffice", "evince", 
+        "galculator", "gparted", "meld", "gitg", "geany",
+        "baobab", "gnome-system-monitor", "gnome-disks", "flameshot"
+    ]
+    
+    # Check if any essential app is missing
+    missing_apps = [app for app in essential_apps if not shutil.which(app)]
+    
+    if missing_apps:
         print(f"📦 Installing packages (this may take a few minutes)...")
+        print(f"   Missing: {', '.join(missing_apps[:5])}{'...' if len(missing_apps) > 5 else ''}")
         run(f"sudo apk add --no-cache {' '.join(all_packages)}", check=False)
         print("✅ Packages installed successfully")
     else:

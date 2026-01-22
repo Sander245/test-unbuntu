@@ -1,8 +1,32 @@
 {
-  "name": "Debian 13 Desktop (Manual Start)",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
-  "forwardPorts": [6080],
-  "remoteUser": "root"
+    "name": "Debian Desktop Environment",
+    "image": "mcr.microsoft.com/devcontainers/base:debian",
+    "features": {
+        "ghcr.io/devcontainers/features/common-utils:2": {
+            "installZsh": true,
+            "installOhMyZsh": true,
+            "upgradePackages": true,
+            "username": "vscode"
+        }
+    },
+    "remoteUser": "vscode",
+    "forwardPorts": [5901, 6080],
+    "portsAttributes": {
+        "6080": {
+            "label": "Desktop (noVNC)",
+            "onAutoForward": "notify"
+        },
+        "5901": {
+            "label": "VNC Server",
+            "onAutoForward": "ignore"
+        }
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python"
+            ]
+        }
+    },
+    "postCreateCommand": "echo 'Debian Desktop Ready! Run: python3 desktop_toggle.py'"
 }

@@ -3,10 +3,27 @@ import subprocess
 import time
 import shutil
 
-def run(cmd, check=True):
+def run(cmd, check=True, show_output=False):
     print(f"→ {cmd}")
-    result = subprocess.run(cmd, shell=True, check=check, capture_output=True, text=True)
-    return result
+    if show_output:
+        # Show output in real-time
+        result = subprocess.run(cmd, shell=True, check=check)
+        return result
+    else:
+        result = subprocess.run(cmd, shell=True, check=check, capture_output=True, text=True)
+        return result
+
+def run_install(cmd):
+    """Run installation command with visible output"""
+    print(f"→ {cmd}")
+    process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+    while True:
+        line = process.stdout.readline()
+        if not line and process.poll() is not None:
+            break
+        if line:
+            print(line.rstrip())
+    return process.returncode
 
 def check_and_install_packages():
     """Check if required packages are installed, install if missing"""
@@ -113,21 +130,81 @@ def check_and_install_packages():
                    wine_packages + theme_packages + bluetooth_packages + extra_packages)
     
     # Update package list first
-    print("📦 Updating package lists...")
-    run("sudo apt-get update -y", check=False)
+    print("\n" + "="*60)
+    print("📦 UPDATING PACKAGE LISTS...")
+    print("="*60)
+    run_install("sudo apt-get update -y")
     
-    # Install all packages
-    print(f"📦 Installing {len(all_packages)} packages (this may take several minutes on first run)...")
-    run(f"sudo DEBIAN_FRONTEND=noninteractive apt-get install -y {' '.join(all_packages)}", check=False)
+    # Fix any broken packages first
+    print("\n" + "="*60)
+    print("🔧 FIXING ANY BROKEN PACKAGES...")
+    print("="*60)
+    run_install("sudo dpkg --configure -a")
+    run_install("sudo apt-get install -f -y")
     
-    # Verify critical apps
-    critical_apps = ["vncserver", "chromium", "firefox-esr", "gimp", "vlc", "wine", "filezilla", "libreoffice"]
-    missing = [app for app in critical_apps if not shutil.which(app)]
+    # Install packages in groups for better error handling
+    package_groups = [
+        ("Core VNC", core_packages),
+        ("Desktop Environment", desktop_packages),
+        ("Browsers", browser_packages),
+        ("File Management", file_packages),
+        ("Office Suite", office_packages),
+        ("Media Apps", media_packages),
+        ("System Utilities", system_packages),
+        ("Development Tools", dev_packages),
+        ("Network Apps", network_packages),
+        ("Wine", wine_packages),
+        ("Themes & Fonts", theme_packages),
+        ("Bluetooth", bluetooth_packages),
+        ("Extra Tools", extra_packages),
+    ]
+    
+    for group_name, packages in package_groups:
+        print("\n" + "="*60)
+        print(f"📦 INSTALLING: {group_name} ({len(packages)} packages)")
+        print("="*60)
+        install_cmd = f"sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --fix-missing {' '.join(packages)}"
+        ret = run_install(install_cmd)
+        if ret != 0:
+            print(f"⚠️  Some {group_name} packages may have failed, continuing...")
+    
+    # Final fix attempt
+    print("\n" + "="*60)
+    print("🔧 FINAL CLEANUP...")
+    print("="*60)
+    run_install("sudo apt-get install -f -y")
+    
+    # Verify critical apps and their actual executables
+    critical_checks = {
+        "vncserver": "vncserver",
+        "firefox-esr": "firefox-esr",
+        "chromium": ["chromium", "chromium-browser"],
+        "gimp": "gimp",
+        "vlc": "vlc",
+        "wine": "wine",
+        "filezilla": "filezilla",
+        "libreoffice": "libreoffice"
+    }
+    
+    print("\n🔎 Verifying installations...")
+    missing = []
+    for name, executable in critical_checks.items():
+        if isinstance(executable, list):
+            found = any(shutil.which(exe) for exe in executable)
+        else:
+            found = shutil.which(executable) is not None
+        
+        if not found:
+            missing.append(name)
+            print(f"   ❌ {name} - NOT FOUND")
+        else:
+            print(f"   ✅ {name} - installed")
     
     if missing:
-        print(f"⚠️  Some apps may need manual install: {', '.join(missing)}")
+        print(f"\n⚠️  WARNING: {len(missing)} apps failed to install: {', '.join(missing)}")
+        print("💡 These apps will not work. You may need to install them manually.")
     else:
-        print("✅ All packages installed successfully")
+        print("\n✅ All critical packages installed successfully!")
 
 def kill_existing():
     print("🔻 Killing existing VNC and noVNC processes...")
@@ -268,49 +345,65 @@ def create_desktop_icons():
     
     desktop_entries = [
         # Browsers
-        {"name": "Firefox", "exec": "firefox-esr", "icon": "firefox-esr", "comment": "Web Browser"},
-        {"name": "Chromium", "exec": "chromium --no-sandbox", "icon": "chromium", "comment": "Chromium Web Browser"},
+        {"name": "Firefox", "exec": "firefox-esr", "check": "firefox-esr", "icon": "firefox-esr", "comment": "Web Browser"},
+        {"name": "Chromium", "exec": "chromium --no-sandbox", "check": ["chromium", "chromium-browser"], "icon": "chromium", "comment": "Chromium Web Browser"},
         # File Management
-        {"name": "Files", "exec": "thunar", "icon": "system-file-manager", "comment": "File Manager"},
-        {"name": "Archive Manager", "exec": "file-roller", "icon": "org.gnome.FileRoller", "comment": "Create and extract archives"},
+        {"name": "Files", "exec": "thunar", "check": "thunar", "icon": "system-file-manager", "comment": "File Manager"},
+        {"name": "Archive Manager", "exec": "file-roller", "check": "file-roller", "icon": "org.gnome.FileRoller", "comment": "Create and extract archives"},
         # Office
-        {"name": "LibreOffice Writer", "exec": "libreoffice --writer", "icon": "libreoffice-writer", "comment": "Word Processor"},
-        {"name": "LibreOffice Calc", "exec": "libreoffice --calc", "icon": "libreoffice-calc", "comment": "Spreadsheet"},
-        {"name": "LibreOffice Impress", "exec": "libreoffice --impress", "icon": "libreoffice-impress", "comment": "Presentations"},
-        {"name": "PDF Viewer", "exec": "evince", "icon": "org.gnome.Evince", "comment": "View PDF documents"},
-        {"name": "Calculator", "exec": "galculator", "icon": "galculator", "comment": "Calculator"},
+        {"name": "LibreOffice Writer", "exec": "libreoffice --writer", "check": "libreoffice", "icon": "libreoffice-writer", "comment": "Word Processor"},
+        {"name": "LibreOffice Calc", "exec": "libreoffice --calc", "check": "libreoffice", "icon": "libreoffice-calc", "comment": "Spreadsheet"},
+        {"name": "LibreOffice Impress", "exec": "libreoffice --impress", "check": "libreoffice", "icon": "libreoffice-impress", "comment": "Presentations"},
+        {"name": "PDF Viewer", "exec": "evince", "check": "evince", "icon": "org.gnome.Evince", "comment": "View PDF documents"},
+        {"name": "Calculator", "exec": "galculator", "check": "galculator", "icon": "galculator", "comment": "Calculator"},
         # Text Editors
-        {"name": "Mousepad", "exec": "mousepad", "icon": "mousepad", "comment": "Simple Text Editor"},
-        {"name": "Geany", "exec": "geany", "icon": "geany", "comment": "IDE and Text Editor"},
+        {"name": "Mousepad", "exec": "mousepad", "check": "mousepad", "icon": "mousepad", "comment": "Simple Text Editor"},
+        {"name": "Geany", "exec": "geany", "check": "geany", "icon": "geany", "comment": "IDE and Text Editor"},
         # Media
-        {"name": "Image Viewer", "exec": "ristretto", "icon": "ristretto", "comment": "View Images"},
-        {"name": "GIMP", "exec": "gimp", "icon": "gimp", "comment": "Image Editor"},
-        {"name": "Inkscape", "exec": "inkscape", "icon": "inkscape", "comment": "Vector Graphics Editor"},
-        {"name": "VLC Media Player", "exec": "vlc", "icon": "vlc", "comment": "Play Videos and Music"},
-        {"name": "Audacious", "exec": "audacious", "icon": "audacious", "comment": "Music Player"},
+        {"name": "Image Viewer", "exec": "ristretto", "check": "ristretto", "icon": "ristretto", "comment": "View Images"},
+        {"name": "GIMP", "exec": "gimp", "check": "gimp", "icon": "gimp", "comment": "Image Editor"},
+        {"name": "Inkscape", "exec": "inkscape", "check": "inkscape", "icon": "inkscape", "comment": "Vector Graphics Editor"},
+        {"name": "VLC Media Player", "exec": "vlc", "check": "vlc", "icon": "vlc", "comment": "Play Videos and Music"},
+        {"name": "Audacious", "exec": "audacious", "check": "audacious", "icon": "audacious", "comment": "Music Player"},
         # System Tools
-        {"name": "Terminal", "exec": "xfce4-terminal", "icon": "utilities-terminal", "comment": "Terminal Emulator"},
-        {"name": "Task Manager", "exec": "xfce4-taskmanager", "icon": "utilities-system-monitor", "comment": "Monitor System Resources"},
-        {"name": "System Monitor", "exec": "gnome-system-monitor", "icon": "utilities-system-monitor", "comment": "View System Resources"},
-        {"name": "Disk Usage", "exec": "baobab", "icon": "baobab", "comment": "Analyze Disk Usage"},
-        {"name": "Disks", "exec": "gnome-disks", "icon": "gnome-disks", "comment": "Disk Management"},
-        {"name": "GParted", "exec": "gparted", "icon": "gparted", "comment": "Partition Editor"},
-        {"name": "Screenshot", "exec": "xfce4-screenshooter", "icon": "applets-screenshooter", "comment": "Take Screenshots"},
-        {"name": "Flameshot", "exec": "flameshot gui", "icon": "flameshot", "comment": "Advanced Screenshot Tool"},
+        {"name": "Terminal", "exec": "xfce4-terminal", "check": "xfce4-terminal", "icon": "utilities-terminal", "comment": "Terminal Emulator"},
+        {"name": "Task Manager", "exec": "xfce4-taskmanager", "check": "xfce4-taskmanager", "icon": "utilities-system-monitor", "comment": "Monitor System Resources"},
+        {"name": "System Monitor", "exec": "gnome-system-monitor", "check": "gnome-system-monitor", "icon": "utilities-system-monitor", "comment": "View System Resources"},
+        {"name": "Disk Usage", "exec": "baobab", "check": "baobab", "icon": "baobab", "comment": "Analyze Disk Usage"},
+        {"name": "Disks", "exec": "gnome-disks", "check": "gnome-disks", "icon": "gnome-disks", "comment": "Disk Management"},
+        {"name": "GParted", "exec": "gparted", "check": "gparted", "icon": "gparted", "comment": "Partition Editor"},
+        {"name": "Screenshot", "exec": "xfce4-screenshooter", "check": "xfce4-screenshooter", "icon": "applets-screenshooter", "comment": "Take Screenshots"},
+        {"name": "Flameshot", "exec": "flameshot gui", "check": "flameshot", "icon": "flameshot", "comment": "Advanced Screenshot Tool"},
         # Development
-        {"name": "Meld", "exec": "meld", "icon": "meld", "comment": "Diff and Merge Tool"},
-        {"name": "Gitg", "exec": "gitg", "icon": "gitg", "comment": "Git Repository Viewer"},
+        {"name": "Meld", "exec": "meld", "check": "meld", "icon": "meld", "comment": "Diff and Merge Tool"},
+        {"name": "Gitg", "exec": "gitg", "check": "gitg", "icon": "gitg", "comment": "Git Repository Viewer"},
         # Network
-        {"name": "Transmission", "exec": "transmission-gtk", "icon": "transmission", "comment": "BitTorrent Client"},
-        {"name": "FileZilla", "exec": "filezilla", "icon": "filezilla", "comment": "FTP Client"},
+        {"name": "Transmission", "exec": "transmission-gtk", "check": "transmission-gtk", "icon": "transmission", "comment": "BitTorrent Client"},
+        {"name": "FileZilla", "exec": "filezilla", "check": "filezilla", "icon": "filezilla", "comment": "FTP Client"},
         # Wine
-        {"name": "Wine Configuration", "exec": "winecfg", "icon": "wine", "comment": "Configure Wine"},
-        {"name": "Wine File Manager", "exec": "wine explorer", "icon": "wine", "comment": "Wine File Explorer"},
+        {"name": "Wine Configuration", "exec": "winecfg", "check": "winecfg", "icon": "wine", "comment": "Configure Wine"},
+        {"name": "Wine File Manager", "exec": "wine explorer", "check": "wine", "icon": "wine", "comment": "Wine File Explorer"},
         # Bluetooth
-        {"name": "Bluetooth Manager", "exec": "blueman-manager", "icon": "bluetooth", "comment": "Manage Bluetooth Devices"},
+        {"name": "Bluetooth Manager", "exec": "blueman-manager", "check": "blueman-manager", "icon": "bluetooth", "comment": "Manage Bluetooth Devices"},
     ]
     
+    # Only create icons for apps that are actually installed
+    created_count = 0
+    skipped_count = 0
+    
     for entry in desktop_entries:
+        # Check if the app is installed
+        check_cmd = entry.get('check', entry['exec'].split()[0])
+        
+        if isinstance(check_cmd, list):
+            is_installed = any(shutil.which(cmd) for cmd in check_cmd)
+        else:
+            is_installed = shutil.which(check_cmd) is not None
+        
+        if not is_installed:
+            skipped_count += 1
+            continue
+        
         filename = entry['name'].replace(' ', '-').replace('(', '').replace(')', '')
         desktop_file = os.path.join(desktop_dir, f"{filename}.desktop")
         with open(desktop_file, "w") as f:
@@ -324,13 +417,14 @@ def create_desktop_icons():
             f.write("Terminal=false\n")
             f.write("StartupNotify=true\n")
         os.chmod(desktop_file, 0o755)
+        created_count += 1
     
     run("chmod +x ~/Desktop/*.desktop", check=False)
     
     # Trust desktop files for XFCE
     run("gio set ~/Desktop/*.desktop metadata::trusted true 2>/dev/null", check=False)
     
-    print(f"✅ Created {len(desktop_entries)} desktop icons")
+    print(f"✅ Created {created_count} desktop icons ({skipped_count} apps not installed)")
 
 def start_vnc():
     print("🚀 Starting VNC server...")
@@ -360,15 +454,17 @@ def start_novnc():
     websockify_check = run("which websockify", check=False)
     if websockify_check.returncode != 0:
         print("⚠️  websockify not found, installing...")
-        run("sudo apt-get update -y", check=False)
-        run("sudo DEBIAN_FRONTEND=noninteractive apt-get install -y websockify python3-websockify novnc", check=True)
+        print("="*60)
+        run_install("sudo apt-get update -y")
+        run_install("sudo DEBIAN_FRONTEND=noninteractive apt-get install -y websockify python3-websockify novnc")
+        print("="*60)
         
         # Verify installation
         websockify_check = run("which websockify", check=False)
         if websockify_check.returncode != 0:
             # Try pip install as fallback
             print("⚠️  Trying pip install...")
-            run("pip3 install websockify", check=False)
+            run_install("pip3 install websockify")
             websockify_check = run("which websockify", check=False)
             if websockify_check.returncode != 0:
                 raise Exception("Failed to install websockify")
@@ -392,7 +488,9 @@ def start_novnc():
     # If no noVNC path found, reinstall novnc
     if not novnc_path:
         print("⚠️  noVNC not found, installing...")
-        run("sudo apt-get install -y novnc", check=False)
+        print("="*60)
+        run_install("sudo apt-get install -y novnc")
+        print("="*60)
         
         # Check again
         for path in novnc_paths:

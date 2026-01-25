@@ -356,29 +356,102 @@ def start_vnc():
 def start_novnc():
     print("🌐 Starting noVNC web interface...")
     
-    # Find noVNC path
-    novnc_paths = ["/usr/share/novnc", "/usr/share/webapps/novnc", "/usr/share/novnc/utils"]
+    # Check if websockify is installed
+    websockify_check = run("which websockify", check=False)
+    if websockify_check.returncode != 0:
+        print("⚠️  websockify not found, installing...")
+        run("sudo apt-get update -y", check=False)
+        run("sudo DEBIAN_FRONTEND=noninteractive apt-get install -y websockify python3-websockify novnc", check=True)
+        
+        # Verify installation
+        websockify_check = run("which websockify", check=False)
+        if websockify_check.returncode != 0:
+            # Try pip install as fallback
+            print("⚠️  Trying pip install...")
+            run("pip3 install websockify", check=False)
+            websockify_check = run("which websockify", check=False)
+            if websockify_check.returncode != 0:
+                raise Exception("Failed to install websockify")
+    
+    print("✅ websockify is available")
+    
+    # Find noVNC path - check multiple possible locations
+    novnc_paths = [
+        "/usr/share/novnc",
+        "/usr/share/webapps/novnc", 
+        "/usr/share/novnc/utils",
+        "/snap/novnc/current"
+    ]
     novnc_path = None
     for path in novnc_paths:
         if os.path.exists(path):
+            print(f"✅ Found noVNC at: {path}")
             novnc_path = path
             break
     
+    # If no noVNC path found, reinstall novnc
     if not novnc_path:
-        novnc_path = "/usr/share/novnc"
+        print("⚠️  noVNC not found, installing...")
+        run("sudo apt-get install -y novnc", check=False)
+        
+        # Check again
+        for path in novnc_paths:
+            if os.path.exists(path):
+                print(f"✅ Found noVNC at: {path}")
+                novnc_path = path
+                break
+        
+        # If still not found, use websockify without web interface
+        if not novnc_path:
+            print("⚠️  noVNC path not found, using websockify without web UI")
+            novnc_path = None
     
     log_path = os.path.expanduser("~/.novnc.log")
     
-    # Start websockify
-    cmd = f"websockify --web={novnc_path} 6080 localhost:5901 > {log_path} 2>&1 &"
-    run(cmd, check=False)
+    # Kill any existing websockify process
+    run("pkill -f websockify", check=False)
+    time.sleep(1)
     
-    time.sleep(3)
-    result = run("pgrep -f websockify", check=False)
-    if result.returncode == 0:
-        print("✅ noVNC web interface started on port 6080")
+    # Start websockify in background
+    if novnc_path:
+        websockify_cmd = f"nohup websockify --web={novnc_path} 6080 localhost:5901 > {log_path} 2>&1 &"
+        print(f"→ Starting: websockify --web={novnc_path} 6080 localhost:5901")
     else:
-        print(f"⚠️  Warning: Could not verify websockify is running. Check: {log_path}")
+        # Run without --web parameter if noVNC not available
+        websockify_cmd = f"nohup websockify 6080 localhost:5901 > {log_path} 2>&1 &"
+        print(f"→ Starting: websockify 6080 localhost:5901 (without web UI)")
+    
+    os.system(websockify_cmd)
+    
+    # Wait and verify it started
+    time.sleep(3)
+    
+    for attempt in range(5):
+        result = run("pgrep -f websockify", check=False)
+        if result.returncode == 0:
+            # Double-check the port is listening
+            port_check = run("netstat -tuln | grep :6080 || ss -tuln | grep :6080", check=False)
+            if port_check.returncode == 0:
+                print("✅ websockify started successfully on port 6080")
+                if novnc_path:
+                    print("✅ noVNC web interface is available")
+                return
+            else:
+                print(f"⚠️  Attempt {attempt+1}: Port 6080 not ready yet, waiting...")
+                time.sleep(2)
+        else:
+            print(f"⚠️  Attempt {attempt+1}: websockify process not found, waiting...")
+            time.sleep(2)
+    
+    # If we get here, something went wrong
+    print(f"❌ Warning: Could not verify websockify is running properly")
+    print(f"📝 Check log file: {log_path}")
+    if os.path.exists(log_path):
+        print("\n--- Log output ---")
+        with open(log_path) as f:
+            print(f.read())
+        print("--- End log ---\n")
+    raise Exception("websockify failed to start properly")
 
 def get_preview_url():
     """Get the GitHub Codespaces preview URL"""
